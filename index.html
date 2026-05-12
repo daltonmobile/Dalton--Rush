@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Dalton Rush</title>
+
+<style>
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:Arial,sans-serif;
+}
+
+body{
+background:linear-gradient(135deg,#0f172a,#111827,#1e293b);
+color:white;
+min-height:100vh;
+overflow:hidden;
+}
+
+canvas{
+position:fixed;
+top:0;
+left:0;
+z-index:-1;
+}
+
+.screen{
+display:none;
+min-height:100vh;
+width:100%;
+padding:20px;
+justify-content:center;
+align-items:center;
+flex-direction:column;
+}
+
+.active{
+display:flex;
+}
+
+.title{
+font-size:3rem;
+margin-bottom:10px;
+text-align:center;
+}
+
+.subtitle{
+opacity:0.8;
+margin-bottom:25px;
+text-align:center;
+}
+
+button{
+padding:15px;
+width:90%;
+max-width:320px;
+margin:10px 0;
+border:none;
+border-radius:14px;
+background:#2563eb;
+color:white;
+font-size:1rem;
+cursor:pointer;
+}
+
+button:hover{
+opacity:0.9;
+}
+
+#gameContainer{
+width:100%;
+max-width:500px;
+}
+
+.topbar{
+display:flex;
+justify-content:space-between;
+margin-bottom:12px;
+font-size:1rem;
+}
+
+#gameArea{
+position:relative;
+width:100%;
+height:430px;
+background:rgba(255,255,255,0.07);
+border-radius:20px;
+overflow:hidden;
+border:2px solid rgba(255,255,255,0.1);
+}
+
+.target{
+position:absolute;
+border-radius:50%;
+cursor:pointer;
+transition:transform 0.08s;
+}
+
+.target:active{
+transform:scale(0.9);
+}
+
+.badges{
+margin-top:20px;
+text-align:center;
+font-size:0.9rem;
+opacity:0.9;
+}
+
+.footer{
+margin-top:20px;
+opacity:0.6;
+font-size:0.8rem;
+text-align:center;
+}
+</style>
+</head>
+
+<body>
+
+<canvas id="particles"></canvas>
+
+<div id="splash" class="screen active">
+<h1 class="title">DALTON RUSH</h1>
+<p>Loading...</p>
+</div>
+
+<div id="menu" class="screen">
+
+<h1 class="title">Dalton Rush</h1>
+
+<p class="subtitle">
+Fast reflexes win.
+</p>
+
+<button onclick="startGame('classic')">
+Classic Mode
+</button>
+
+<button onclick="startGame('speed')">
+Speed Mode
+</button>
+
+<button onclick="startGame('sudden')">
+Sudden Death
+</button>
+
+<button onclick="startGame('zen')">
+Zen Mode
+</button>
+
+<button onclick="toggleSound()">
+Toggle Sound
+</button>
+
+<div class="badges" id="badgeArea"></div>
+
+<div class="footer">
+Powered by Dalton Mobile
+</div>
+
+</div>
+
+<div id="gameScreen" class="screen">
+
+<div id="gameContainer">
+
+<div class="topbar">
+<div>Score: <span id="score">0</span></div>
+<div>Time: <span id="time">30</span></div>
+<div>Lives: <span id="lives">3</span></div>
+</div>
+
+<div class="topbar">
+<div>Combo: <span id="combo">0</span></div>
+<div>Best: <span id="best">0</span></div>
+</div>
+
+<div id="gameArea"></div>
+
+<button onclick="returnMenu()">
+Return To Menu
+</button>
+
+</div>
+
+</div>
+
+<script>
+
+const splash = document.getElementById('splash');
+const menu = document.getElementById('menu');
+const gameScreen = document.getElementById('gameScreen');
+
+const gameArea = document.getElementById('gameArea');
+
+const scoreEl = document.getElementById('score');
+const timeEl = document.getElementById('time');
+const livesEl = document.getElementById('lives');
+const comboEl = document.getElementById('combo');
+const bestEl = document.getElementById('best');
+const badgeArea = document.getElementById('badgeArea');
+
+let score = 0;
+let timeLeft = 30;
+let lives = 3;
+let combo = 0;
+
+let gameRunning = false;
+
+let timer;
+let targetTimeout;
+
+let currentMode = 'classic';
+
+let targetSpeed = 900;
+
+let soundEnabled = true;
+
+const colors = [
+'#22c55e',
+'#ef4444',
+'#3b82f6',
+'#eab308',
+'#a855f7',
+'#ec4899',
+'#14b8a6',
+'#f97316'
+];
+
+bestEl.textContent =
+localStorage.getItem('bestScore') || 0;
+
+setTimeout(()=>{
+showScreen(menu);
+},1800);
+
+function showScreen(screen){
+
+[splash,menu,gameScreen].forEach(s=>{
+s.classList.remove('active');
+});
+
+screen.classList.add('active');
+
+}
+
+function toggleSound(){
+
+soundEnabled = !soundEnabled;
+
+alert(soundEnabled ? 'Sound ON' : 'Sound OFF');
+
+}
+
+function playBeep(freq,duration){
+
+if(!soundEnabled) return;
+
+const ctx =
+new(window.AudioContext ||
+window.webkitAudioContext)();
+
+const osc = ctx.createOscillator();
+const gain = ctx.createGain();
+
+osc.type = 'sine';
+osc.frequency.value = freq;
+
+osc.connect(gain);
+gain.connect(ctx.destination);
+
+osc.start();
+
+setTimeout(()=>{
+osc.stop();
+ctx.close();
+},duration);
+
+}
+
+function startGame(mode){
+
+currentMode = mode;
+
+score = 0;
+combo = 0;
+lives = 3;
+
+gameRunning = true;
+
+scoreEl.textContent = score;
+comboEl.textContent = combo;
+
+if(mode === 'classic'){
+
+timeLeft = 30;
+targetSpeed = 900;
+
+}
+
+if(mode === 'speed'){
+
+timeLeft = 30;
+targetSpeed = 500;
+
+}
+
+if(mode === 'sudden'){
+
+timeLeft = 30;
+lives = 1;
+targetSpeed = 700;
+
+}
+
+if(mode === 'zen'){
+
+timeLeft = 60;
+lives = 999;
+targetSpeed = 1000;
+
+}
+
+timeEl.textContent = timeLeft;
+
+livesEl.textContent =
+mode === 'zen' ? '∞' : lives;
+
+showScreen(gameScreen);
+
+createTarget();
+
+clearInterval(timer);
+
+timer = setInterval(()=>{
+
+timeLeft--;
+
+timeEl.textContent = timeLeft;
+
+if(timeLeft <= 5){
+
+playBeep(800,100);
+
+}
+
+if(timeLeft <= 0){
+
+endGame();
+
+}
+
+},1000);
+
+}
+
+function createTarget(){
+
+if(!gameRunning) return;
+
+const target =
+document.createElement('div');
+
+target.classList.add('target');
+
+let size = 70;
+
+if(currentMode !== 'classic'){
+
+const difficulty =
+Math.floor(score / 10);
+
+size = Math.max(35,70 - difficulty * 2);
+
+}
+
+const maxX =
+gameArea.clientWidth - size;
+
+const maxY =
+gameArea.clientHeight - size;
+
+target.style.width = size + 'px';
+target.style.height = size + 'px';
+
+target.style.left =
+Math.random() * maxX + 'px';
+
+target.style.top =
+Math.random() * maxY + 'px';
+
+const color =
+colors[Math.floor(Math.random() * colors.length)];
+
+target.style.background = color;
+
+target.style.boxShadow =
+`0 0 20px ${color}`;
+
+let clicked = false;
+
+target.addEventListener('click',()=>{
+
+clicked = true;
+
+if(navigator.vibrate){
+
+navigator.vibrate(40);
+
+}
+
+playBeep(500,80);
+
+score++;
+
+combo++;
+
+if(combo >= 5){
+
+score += 2;
+
+}
+
+scoreEl.textContent = score;
+
+comboEl.textContent = combo;
+
+unlockBadges();
+
+target.remove();
+
+clearTimeout(targetTimeout);
+
+createTarget();
+
+});
+
+gameArea.innerHTML = '';
+
+gameArea.appendChild(target);
+
+let speed = targetSpeed;
+
+if(currentMode !== 'classic'){
+
+const difficulty =
+Math.floor(score / 10);
+
+speed =
+Math.max(300,targetSpeed - difficulty * 25);
+
+}
+
+targetTimeout = setTimeout(()=>{
+
+if(!clicked){
+
+combo = 0;
+
+comboEl.textContent = combo;
+
+if(currentMode !== 'zen'){
+
+lives--;
+
+livesEl.textContent = lives;
+
+}
+
+playBeep(200,120);
+
+if(lives <= 0){
+
+endGame();
+return;
+
+}
+
+createTarget();
+
+}
+
+},speed);
+
+}
+
+function unlockBadges(){
+
+const badges = [];
+
+if(score >= 10)
+badges.push('⚡ Fast Fingers');
+
+if(score >= 25)
+badges.push('🔥 Combo King');
+
+if(score >= 50)
+badges.push('👑 Reflex Master');
+
+if(score >= 100)
+badges.push('💎 Dalton Legend');
+
+badgeArea.innerHTML =
+badges.join('<br>');
+
+}
+
+function endGame(){
+
+gameRunning = false;
+
+clearInterval(timer);
+
+clearTimeout(targetTimeout);
+
+gameArea.innerHTML = '';
+
+playBeep(120,300);
+
+let best =
+localStorage.getItem('bestScore') || 0;
+
+if(score > best){
+
+localStorage.setItem('bestScore',score);
+
+best = score;
+
+}
+
+bestEl.textContent = best;
+
+alert('Game Over! Your Score: ' + score);
+
+showScreen(menu);
+
+}
+
+function returnMenu(){
+
+clearInterval(timer);
+
+clearTimeout(targetTimeout);
+
+gameRunning = false;
+
+showScreen(menu);
+
+}
+
+/* PARTICLES */
+
+const canvas =
+document.getElementById('particles');
+
+const ctx =
+canvas.getContext('2d');
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+let particles = [];
+
+for(let i=0;i<60;i++){
+
+particles.push({
+
+x:Math.random()*canvas.width,
+y:Math.random()*canvas.height,
+r:Math.random()*3,
+dx:(Math.random()-0.5),
+dy:(Math.random()-0.5)
+
+});
+
+}
+
+function animateParticles(){
+
+ctx.clearRect(
+0,
+0,
+canvas.width,
+canvas.height
+);
+
+particles.forEach(p=>{
+
+ctx.beginPath();
+
+ctx.arc(
+p.x,
+p.y,
+p.r,
+0,
+Math.PI*2
+);
+
+ctx.fillStyle =
+'rgba(255,255,255,0.4)';
+
+ctx.fill();
+
+p.x += p.dx;
+p.y += p.dy;
+
+if(p.x < 0 || p.x > canvas.width)
+p.dx *= -1;
+
+if(p.y < 0 || p.y > canvas.height)
+p.dy *= -1;
+
+});
+
+requestAnimationFrame(
+animateParticles
+);
+
+}
+
+animateParticles();
+
+window.addEventListener('resize',()=>{
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+});
+
+</script>
+
+</body>
+</html>
