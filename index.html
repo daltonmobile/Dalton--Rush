@@ -1,0 +1,1272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport"
+content="width=device-width, initial-scale=1.0">
+
+<title>Dalton Rush</title>
+
+<style>
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:Arial,sans-serif;
+}
+
+body{
+background:
+linear-gradient(
+135deg,
+#020617,
+#0f172a,
+#111827
+);
+color:white;
+min-height:100vh;
+overflow:hidden;
+}
+
+canvas{
+position:fixed;
+top:0;
+left:0;
+z-index:-1;
+}
+
+.screen{
+display:none;
+min-height:100vh;
+width:100%;
+padding:25px 20px 40px;
+justify-content:flex-start;
+align-items:center;
+flex-direction:column;
+overflow-y:auto;
+}
+
+.active{
+display:flex;
+}
+
+.title{
+font-size:3rem;
+margin-top:40px;
+margin-bottom:10px;
+text-align:center;
+}
+
+.subtitle{
+opacity:0.8;
+margin-bottom:30px;
+text-align:center;
+}
+
+button{
+padding:15px;
+width:90%;
+max-width:320px;
+margin:10px 0;
+border:none;
+border-radius:16px;
+background:#2563eb;
+color:white;
+font-size:1rem;
+cursor:pointer;
+transition:0.2s;
+box-shadow:
+0 0 15px rgba(37,99,235,0.4);
+}
+
+button:hover{
+transform:scale(1.03);
+}
+
+#gameContainer{
+width:100%;
+max-width:500px;
+}
+
+.topbar{
+display:flex;
+justify-content:space-between;
+margin-bottom:12px;
+font-size:1rem;
+}
+
+#gameArea{
+position:relative;
+width:100%;
+height:430px;
+background:
+rgba(255,255,255,0.06);
+border-radius:24px;
+overflow:hidden;
+border:
+2px solid rgba(255,255,255,0.08);
+backdrop-filter:blur(10px);
+}
+
+.target{
+position:absolute;
+border-radius:50%;
+cursor:pointer;
+transition:
+transform 0.12s,
+box-shadow 0.15s,
+opacity 0.15s;
+animation:
+pulseGlow 1s infinite alternate;
+}
+
+.target:active{
+transform:scale(0.88);
+}
+
+@keyframes pulseGlow{
+from{
+filter:brightness(1);
+}
+to{
+filter:brightness(1.4);
+}
+}
+
+.overlay{
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:
+rgba(0,0,0,0.75);
+display:flex;
+justify-content:center;
+align-items:center;
+z-index:999;
+backdrop-filter:blur(6px);
+}
+
+.hidden{
+display:none;
+}
+
+.overlay-card{
+background:#111827;
+padding:30px;
+border-radius:24px;
+width:90%;
+max-width:340px;
+text-align:center;
+border:
+2px solid rgba(255,255,255,0.08);
+
+box-shadow:
+0 0 40px rgba(59,130,246,0.4);
+
+animation:popup 0.25s ease;
+}
+
+@keyframes popup{
+from{
+transform:scale(0.8);
+opacity:0;
+}
+to{
+transform:scale(1);
+opacity:1;
+}
+}
+
+.particle{
+position:absolute;
+width:10px;
+height:10px;
+border-radius:50%;
+pointer-events:none;
+animation:explode 0.5s linear forwards;
+}
+
+@keyframes explode{
+to{
+transform:
+translate(var(--x),var(--y))
+scale(0);
+opacity:0;
+}
+}
+
+.floating-text{
+position:absolute;
+font-weight:bold;
+font-size:1.2rem;
+pointer-events:none;
+animation:floatUp 0.8s ease forwards;
+}
+
+@keyframes floatUp{
+0%{
+opacity:1;
+transform:translateY(0);
+}
+100%{
+opacity:0;
+transform:translateY(-60px);
+}
+}
+
+.combo-announce{
+position:fixed;
+top:20%;
+left:50%;
+transform:translateX(-50%);
+font-size:2rem;
+font-weight:bold;
+color:#facc15;
+text-shadow:0 0 20px #facc15;
+z-index:1000;
+animation:comboAnim 0.8s ease forwards;
+pointer-events:none;
+}
+
+@keyframes comboAnim{
+0%{
+transform:
+translateX(-50%)
+scale(0.5);
+opacity:0;
+}
+20%{
+opacity:1;
+}
+100%{
+transform:
+translateX(-50%)
+scale(1.3);
+opacity:0;
+}
+}
+
+.badges{
+margin-top:20px;
+text-align:center;
+font-size:0.95rem;
+opacity:0.9;
+line-height:1.6;
+}
+
+.footer{
+margin-top:20px;
+opacity:0.6;
+font-size:0.8rem;
+text-align:center;
+}
+
+</style>
+</head>
+
+<body>
+
+<canvas id="particles"></canvas>
+
+<div id="splash"
+class="screen active">
+
+<h1 class="title">
+DALTON RUSH
+</h1>
+
+<p>Loading...</p>
+
+</div>
+
+<div id="menu"
+class="screen">
+
+<h1 class="title">
+Dalton Rush
+</h1>
+
+<p class="subtitle">
+Fast reflexes win.
+</p>
+
+<button
+onclick="startGame('classic')">
+Classic Mode
+</button>
+
+<button
+onclick="startGame('speed')">
+Speed Mode
+</button>
+
+<button
+onclick="startGame('sudden')">
+Sudden Death
+</button>
+
+<button
+onclick="startGame('zen')">
+Zen Mode
+</button>
+
+<button
+onclick="toggleSound()">
+Toggle Sound
+</button>
+
+<div class="badges"
+id="badgeArea">
+</div>
+
+<div class="footer">
+Powered by Dalton Mobile
+</div>
+
+</div>
+
+<div id="gameScreen"
+class="screen">
+
+<div id="gameContainer">
+
+<div class="topbar">
+<div>
+Score:
+<span id="score">0</span>
+</div>
+
+<div>
+Time:
+<span id="time">30</span>
+</div>
+
+<div>
+Lives:
+<span id="lives">3</span>
+</div>
+</div>
+
+<div class="topbar">
+<div>
+Combo:
+<span id="combo">0</span>
+</div>
+
+<div>
+Best:
+<span id="best">0</span>
+</div>
+</div>
+
+<div style="
+display:flex;
+gap:10px;
+margin-bottom:12px;
+">
+
+<button
+onclick="pauseGame()"
+style="flex:1;">
+Pause
+</button>
+
+<button
+onclick="openSettings()"
+style="flex:1;">
+Settings
+</button>
+
+</div>
+
+<div id="gameArea"></div>
+
+<div id="comboPopup"></div>
+
+<button
+onclick="returnMenu()">
+Return To Menu
+</button>
+
+</div>
+
+</div>
+
+<div id="pauseOverlay"
+class="overlay hidden">
+
+<div class="overlay-card">
+
+<h2>Paused</h2>
+
+<button
+onclick="resumeGame()">
+Resume
+</button>
+
+<button
+onclick="returnMenu()">
+Main Menu
+</button>
+
+</div>
+
+</div>
+
+<div id="gameOverOverlay"
+class="overlay hidden">
+
+<div class="overlay-card">
+
+<h2 id="finalScoreTitle">
+Game Over
+</h2>
+
+<p id="finalScoreText">
+</p>
+
+<button
+onclick="restartCurrentMode()">
+Play Again
+</button>
+
+<button
+onclick="returnMenu()">
+Main Menu
+</button>
+
+</div>
+
+</div>
+
+<div id="settingsPanel"
+class="overlay hidden">
+
+<div class="overlay-card">
+
+<h2>Settings</h2>
+
+<button
+onclick="toggleSound()">
+Toggle Sound
+</button>
+
+<button
+onclick="toggleFullscreen()">
+Fullscreen
+</button>
+
+<button
+onclick="closeSettings()">
+Close
+</button>
+
+</div>
+
+</div>
+
+<script>
+
+const splash =
+document.getElementById('splash');
+
+const menu =
+document.getElementById('menu');
+
+const gameScreen =
+document.getElementById('gameScreen');
+
+const gameArea =
+document.getElementById('gameArea');
+
+const scoreEl =
+document.getElementById('score');
+
+const timeEl =
+document.getElementById('time');
+
+const livesEl =
+document.getElementById('lives');
+
+const comboEl =
+document.getElementById('combo');
+
+const bestEl =
+document.getElementById('best');
+
+const badgeArea =
+document.getElementById('badgeArea');
+
+let score = 0;
+let timeLeft = 30;
+let lives = 3;
+let combo = 0;
+
+let gameRunning = false;
+
+let timer;
+let targetTimeout;
+
+let currentMode = 'classic';
+
+let targetSpeed = 900;
+
+let soundEnabled = true;
+
+const colors = [
+'#22c55e',
+'#ef4444',
+'#3b82f6',
+'#eab308',
+'#a855f7',
+'#ec4899',
+'#14b8a6',
+'#f97316'
+];
+
+bestEl.textContent =
+localStorage.getItem(
+'bestScore'
+) || 0;
+
+setTimeout(()=>{
+showScreen(menu);
+},1800);
+
+function showScreen(screen){
+
+[splash,menu,gameScreen]
+.forEach(s=>{
+s.classList.remove('active');
+});
+
+screen.classList.add('active');
+
+}
+
+function toggleSound(){
+
+soundEnabled = !soundEnabled;
+
+alert(
+soundEnabled
+? 'Sound ON'
+: 'Sound OFF'
+);
+
+}
+
+function playBeep(){
+
+if(!soundEnabled) return;
+
+const ctx =
+new(window.AudioContext ||
+window.webkitAudioContext)();
+
+const osc =
+ctx.createOscillator();
+
+const gain =
+ctx.createGain();
+
+osc.type = 'triangle';
+
+osc.frequency.setValueAtTime(
+1200,
+ctx.currentTime
+);
+
+osc.frequency
+.exponentialRampToValueAtTime(
+800,
+ctx.currentTime + 0.05
+);
+
+gain.gain.setValueAtTime(
+0.15,
+ctx.currentTime
+);
+
+gain.gain
+.exponentialRampToValueAtTime(
+0.001,
+ctx.currentTime + 0.06
+);
+
+osc.connect(gain);
+
+gain.connect(ctx.destination);
+
+osc.start();
+
+osc.stop(
+ctx.currentTime + 0.06
+);
+
+}
+
+function startGame(mode){
+
+currentMode = mode;
+
+score = 0;
+combo = 0;
+lives = 3;
+
+gameRunning = true;
+
+scoreEl.textContent = score;
+comboEl.textContent = combo;
+
+if(mode === 'classic'){
+timeLeft = 30;
+targetSpeed = 900;
+}
+
+if(mode === 'speed'){
+timeLeft = 30;
+targetSpeed = 500;
+}
+
+if(mode === 'sudden'){
+timeLeft = 30;
+lives = 1;
+targetSpeed = 700;
+}
+
+if(mode === 'zen'){
+timeLeft = 60;
+lives = 999;
+targetSpeed = 1000;
+}
+
+timeEl.textContent = timeLeft;
+
+livesEl.textContent =
+mode === 'zen'
+? '∞'
+: lives;
+
+showScreen(gameScreen);
+
+createTarget();
+
+clearInterval(timer);
+
+timer = setInterval(()=>{
+
+timeLeft--;
+
+timeEl.textContent =
+timeLeft;
+
+if(timeLeft <= 0){
+endGame();
+}
+
+},1000);
+
+}
+
+function createTarget(){
+
+if(!gameRunning) return;
+
+const target =
+document.createElement('div');
+
+target.classList.add('target');
+
+let size = 70;
+
+if(currentMode !== 'classic'){
+
+const difficulty =
+Math.floor(score / 10);
+
+size =
+Math.max(
+35,
+70 - difficulty * 2
+);
+
+}
+
+const maxX =
+gameArea.clientWidth - size;
+
+const maxY =
+gameArea.clientHeight - size;
+
+target.style.width =
+size + 'px';
+
+target.style.height =
+size + 'px';
+
+target.style.left =
+Math.random() * maxX + 'px';
+
+target.style.top =
+Math.random() * maxY + 'px';
+
+const color =
+colors[
+Math.floor(
+Math.random() * colors.length
+)
+];
+
+target.style.background =
+color;
+
+target.style.boxShadow =
+`0 0 20px ${color}`;
+
+let clicked = false;
+
+target.addEventListener(
+'click',
+()=>{
+
+clicked = true;
+
+if(navigator.vibrate){
+navigator.vibrate(40);
+}
+
+playBeep();
+
+score++;
+
+const rect =
+target.getBoundingClientRect();
+
+const areaRect =
+gameArea.getBoundingClientRect();
+
+const x =
+rect.left -
+areaRect.left +
+rect.width/2;
+
+const y =
+rect.top -
+areaRect.top +
+rect.height/2;
+
+createParticles(
+x,
+y,
+color
+);
+
+showFloatingText(
+x,
+y,
+'+1',
+color
+);
+
+combo++;
+
+showComboPopup(combo);
+
+if(combo >= 5){
+score += 2;
+}
+
+scoreEl.textContent =
+score;
+
+comboEl.textContent =
+combo;
+
+unlockBadges();
+
+target.remove();
+
+clearTimeout(
+targetTimeout
+);
+
+createTarget();
+
+});
+
+gameArea.innerHTML = '';
+
+gameArea.appendChild(target);
+
+let speed = targetSpeed;
+
+if(currentMode !== 'classic'){
+
+const difficulty =
+Math.floor(score / 10);
+
+speed =
+Math.max(
+300,
+targetSpeed -
+difficulty * 25
+);
+
+}
+
+targetTimeout =
+setTimeout(()=>{
+
+if(!clicked){
+
+combo = 0;
+
+comboEl.textContent =
+combo;
+
+if(currentMode !== 'zen'){
+
+lives--;
+
+livesEl.textContent =
+lives;
+
+}
+
+playBeep();
+
+if(lives <= 0){
+
+endGame();
+return;
+
+}
+
+createTarget();
+
+}
+
+},speed);
+
+}
+
+function unlockBadges(){
+
+const badges = [];
+
+if(score >= 10)
+badges.push(
+'⚡ Fast Fingers'
+);
+
+if(score >= 25)
+badges.push(
+'🔥 Combo King'
+);
+
+if(score >= 50)
+badges.push(
+'👑 Reflex Master'
+);
+
+if(score >= 100)
+badges.push(
+'💎 Dalton Legend'
+);
+
+badgeArea.innerHTML =
+badges.join('<br>');
+
+}
+
+function createParticles(
+x,
+y,
+color
+){
+
+for(let i=0;i<12;i++){
+
+const p =
+document.createElement('div');
+
+p.classList.add('particle');
+
+p.style.background =
+color;
+
+p.style.left =
+x + 'px';
+
+p.style.top =
+y + 'px';
+
+p.style.setProperty(
+'--x',
+(Math.random()*120-60)
++'px'
+);
+
+p.style.setProperty(
+'--y',
+(Math.random()*120-60)
++'px'
+);
+
+gameArea.appendChild(p);
+
+setTimeout(()=>{
+p.remove();
+},500);
+
+}
+
+}
+
+function showFloatingText(
+x,
+y,
+text,
+color='#fff'
+){
+
+const el =
+document.createElement('div');
+
+el.classList.add(
+'floating-text'
+);
+
+el.textContent = text;
+
+el.style.left =
+x + 'px';
+
+el.style.top =
+y + 'px';
+
+el.style.color =
+color;
+
+gameArea.appendChild(el);
+
+setTimeout(()=>{
+el.remove();
+},800);
+
+}
+
+function showComboPopup(combo){
+
+if(combo < 5) return;
+
+const popup =
+document.createElement('div');
+
+popup.classList.add(
+'combo-announce'
+);
+
+popup.textContent =
+combo + ' COMBO!';
+
+document.body
+.appendChild(popup);
+
+setTimeout(()=>{
+popup.remove();
+},800);
+
+}
+
+function pauseGame(){
+
+gameRunning = false;
+
+clearInterval(timer);
+
+clearTimeout(
+targetTimeout
+);
+
+document
+.getElementById(
+'pauseOverlay'
+)
+.classList
+.remove('hidden');
+
+}
+
+function resumeGame(){
+
+document
+.getElementById(
+'pauseOverlay'
+)
+.classList
+.add('hidden');
+
+gameRunning = true;
+
+createTarget();
+
+timer = setInterval(()=>{
+
+timeLeft--;
+
+timeEl.textContent =
+timeLeft;
+
+if(timeLeft <= 0){
+endGame();
+}
+
+},1000);
+
+}
+
+function openSettings(){
+
+document
+.getElementById(
+'settingsPanel'
+)
+.classList
+.remove('hidden');
+
+}
+
+function closeSettings(){
+
+document
+.getElementById(
+'settingsPanel'
+)
+.classList
+.add('hidden');
+
+}
+
+function toggleFullscreen(){
+
+if(!document.fullscreenElement){
+
+document.documentElement
+.requestFullscreen();
+
+}else{
+
+document.exitFullscreen();
+
+}
+
+}
+
+function restartCurrentMode(){
+
+document
+.getElementById(
+'gameOverOverlay'
+)
+.classList
+.add('hidden');
+
+startGame(currentMode);
+
+}
+
+function endGame(){
+
+gameRunning = false;
+
+clearInterval(timer);
+
+clearTimeout(
+targetTimeout
+);
+
+gameArea.innerHTML = '';
+
+playBeep();
+
+let best =
+localStorage
+.getItem(
+'bestScore'
+) || 0;
+
+const isNewHigh =
+score > best;
+
+if(isNewHigh){
+
+localStorage.setItem(
+'bestScore',
+score
+);
+
+best = score;
+
+}
+
+bestEl.textContent =
+best;
+
+document
+.getElementById(
+'finalScoreTitle'
+)
+.textContent =
+isNewHigh
+? 'NEW HIGH SCORE!'
+: 'Game Over';
+
+document
+.getElementById(
+'finalScoreText'
+)
+.textContent =
+'Your Score: ' + score;
+
+document
+.getElementById(
+'gameOverOverlay'
+)
+.classList
+.remove('hidden');
+
+showScreen(gameScreen);
+
+}
+
+function returnMenu(){
+
+clearInterval(timer);
+
+clearTimeout(
+targetTimeout
+);
+
+gameRunning = false;
+
+showScreen(menu);
+
+}
+
+/* PARTICLES */
+
+const canvas =
+document.getElementById(
+'particles'
+);
+
+const ctx =
+canvas.getContext('2d');
+
+canvas.width =
+window.innerWidth;
+
+canvas.height =
+window.innerHeight;
+
+let particles = [];
+
+for(let i=0;i<60;i++){
+
+particles.push({
+
+x:
+Math.random()
+* canvas.width,
+
+y:
+Math.random()
+* canvas.height,
+
+r:
+Math.random()*3,
+
+dx:
+(Math.random()-0.5),
+
+dy:
+(Math.random()-0.5)
+
+});
+
+}
+
+function animateParticles(){
+
+ctx.clearRect(
+0,
+0,
+canvas.width,
+canvas.height
+);
+
+particles.forEach(p=>{
+
+ctx.beginPath();
+
+ctx.arc(
+p.x,
+p.y,
+p.r,
+0,
+Math.PI*2
+);
+
+ctx.fillStyle =
+'rgba(255,255,255,0.4)';
+
+ctx.fill();
+
+p.x += p.dx;
+p.y += p.dy;
+
+if(
+p.x < 0 ||
+p.x > canvas.width
+){
+p.dx *= -1;
+}
+
+if(
+p.y < 0 ||
+p.y > canvas.height
+){
+p.dy *= -1;
+}
+
+});
+
+requestAnimationFrame(
+animateParticles
+);
+
+}
+
+animateParticles();
+
+window.addEventListener(
+'resize',
+()=>{
+
+canvas.width =
+window.innerWidth;
+
+canvas.height =
+window.innerHeight;
+
+});
+
+</script>
+
+</body>
+</html>
